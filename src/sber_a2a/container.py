@@ -1,0 +1,128 @@
+from dataclasses import dataclass
+
+from sber_a2a.config import Settings, get_settings
+from sber_a2a.integrations.contracts import (
+    DocumentGateway,
+    FulfillmentGateway,
+    OrderGateway,
+    SupplierRiskGateway,
+)
+from sber_a2a.integrations.mock import (
+    MockDocumentGateway,
+    MockFulfillmentGateway,
+    MockOrderGateway,
+    MockSupplierRiskGateway,
+)
+from sber_a2a.services.deals import DealService
+from sber_a2a.services.llm import LanguageModelService
+from sber_a2a.services.onboarding import AgentOnboardingService
+from sber_a2a.services.store import SQLAlchemyDealStore
+from sber_a2a.shared.security.envelopes import FilesystemKeyStore
+from sber_a2a.shared.security.outbound import OutboundPolicy
+from sber_a2a.suppliers.mock import SupplierRegistry, load_catalog_supplier
+from sber_a2a.suppliers.remote import RemoteSupplierAgent
+from sber_a2a.trust_infrastructure.ledger import DatabaseHashChainAnchor
+from sber_a2a.trust_infrastructure.service import TrustedInfrastructureService
+from sber_a2a.workflow.graph import build_procurement_graph
+
+
+@dataclass(frozen=True)
+class Container:
+    settings: Settings
+    registry: SupplierRegistry
+    llm: LanguageModelService
+    deals: DealService
+    store: SQLAlchemyDealStore
+    order_gateway: OrderGateway
+    risk_gateway: SupplierRiskGateway
+    fulfillment_gateway: FulfillmentGateway
+    document_gateway: DocumentGateway
+    onboarding: AgentOnboardingService
+    trust: TrustedInfrastructureService
+    ledger: DatabaseHashChainAnchor
+
+
+def build_container(settings: Settings | None = None) -> Container:
+    settings = settings or get_settings()
+    runtime = settings.runtime
+    outbound_policy = OutboundPolicy(
+        allowed_schemes=frozenset(runtime.network.allowed_schemes),
+        allowed_ports=frozenset(runtime.network.allowed_ports),
+        allow_private_networks=runtime.network.allow_private_networks,
+    )
+    if settings.supplier_mode == "remote":
+        key_store = FilesystemKeyStore(settings.effective_keys_directory)
+        registry = SupplierRegistry(
+            [
+                RemoteSupplierAgent(
+                    seed.agent_id,
+                    seed.endpoint,
+                    name=seed.name,
+                    categories=set(seed.categories),
+                    timeout_seconds=runtime.network.read_timeout_seconds,
+                    max_attempts=runtime.network.max_attempts,
+                    buyer_agent_id=runtime.profile.buyer_agent_id,
+                    audience=runtime.oidc.audience,
+                    envelope_ttl_seconds=runtime.security.nonce_ttl_seconds,
+                    key_store=key_store,
+                    outbound_policy=outbound_policy,
+                )
+                for seed in runtime.suppliers
+                if seed.status == "active"
+            ]
+        )
+    else:
+        registry = SupplierRegistry(
+            [
+                load_catalog_supplier(
+                    seed.agent_id,
+                    seed.catalog_file,
+                    trusted_risk=seed.risk,
+                    categories=set(seed.categories),
+                )
+                for seed in runtime.suppliers
+                if seed.status == "active"
+            ]
+        )
+    llm = LanguageModelService(settings)
+    store = SQLAlchemyDealStore(settings.database_url)
+    risk_gateway = MockSupplierRiskGateway({seed.agent_id: seed.risk for seed in runtime.suppliers})
+    fulfillment_gateway = MockFulfillmentGateway()
+    document_gateway = MockDocumentGateway()
+    graph = build_procurement_graph(
+        registry,
+        llm,
+        risk_gateway,
+        minimum_quotes=runtime.profile.minimum_quotes,
+    )
+    order_gateway = MockOrderGateway()
+    ledger = DatabaseHashChainAnchor(settings.database_url)
+    trust = TrustedInfrastructureService(runtime, ledger)
+    onboarding = AgentOnboardingService(
+        store,
+        registry,
+        runtime=runtime,
+        outbound_policy=outbound_policy,
+        timeout_seconds=runtime.network.read_timeout_seconds,
+        max_attempts=runtime.network.max_attempts,
+    )
+    return Container(
+        settings=settings,
+        registry=registry,
+        llm=llm,
+        deals=DealService(
+            graph,
+            store,
+            trust,
+            fulfillment_gateway,
+            document_gateway,
+        ),
+        store=store,
+        order_gateway=order_gateway,
+        risk_gateway=risk_gateway,
+        fulfillment_gateway=fulfillment_gateway,
+        document_gateway=document_gateway,
+        onboarding=onboarding,
+        trust=trust,
+        ledger=ledger,
+    )

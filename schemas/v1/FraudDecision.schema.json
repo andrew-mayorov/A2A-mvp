@@ -1,0 +1,52 @@
+{
+  "$defs": {
+    "Decision": {
+      "enum": [
+        "ALLOW",
+        "REQUIRE_APPROVAL",
+        "ESCALATE",
+        "DENY",
+        "FREEZE"
+      ],
+      "title": "Decision",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "decided_at": {
+      "format": "date-time",
+      "title": "Decided At",
+      "type": "string"
+    },
+    "decision": {
+      "$ref": "#/$defs/Decision"
+    },
+    "policy_version": {
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "reasons": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Reasons",
+      "type": "array"
+    },
+    "rule_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Rule Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "decision",
+    "policy_version",
+    "rule_ids",
+    "reasons"
+  ],
+  "title": "FraudDecision",
+  "type": "object"
+}

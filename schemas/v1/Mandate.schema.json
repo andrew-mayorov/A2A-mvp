@@ -1,0 +1,147 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "agent_id": {
+      "title": "Agent Id",
+      "type": "string"
+    },
+    "allowed_actions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Allowed Actions",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "allowed_categories": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Allowed Categories",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "allowed_counterparties": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Allowed Counterparties",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "cumulative_amount": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+          "type": "string"
+        }
+      ],
+      "title": "Cumulative Amount"
+    },
+    "currency": {
+      "pattern": "^[A-Z]{3}$",
+      "title": "Currency",
+      "type": "string"
+    },
+    "forbidden_actions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Forbidden Actions",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "issuer": {
+      "title": "Issuer",
+      "type": "string"
+    },
+    "mandate_id": {
+      "format": "uuid",
+      "title": "Mandate Id",
+      "type": "string"
+    },
+    "maximum_amount": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+          "type": "string"
+        }
+      ],
+      "title": "Maximum Amount"
+    },
+    "organization_id": {
+      "title": "Organization Id",
+      "type": "string"
+    },
+    "principal": {
+      "title": "Principal",
+      "type": "string"
+    },
+    "required_approvals": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Required Approvals",
+      "type": "array"
+    },
+    "revoked_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Revoked At"
+    },
+    "signature": {
+      "title": "Signature",
+      "type": "string"
+    },
+    "valid_from": {
+      "format": "date-time",
+      "title": "Valid From",
+      "type": "string"
+    },
+    "valid_until": {
+      "format": "date-time",
+      "title": "Valid Until",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "version",
+    "principal",
+    "organization_id",
+    "agent_id",
+    "issuer",
+    "allowed_actions",
+    "forbidden_actions",
+    "allowed_categories",
+    "allowed_counterparties",
+    "maximum_amount",
+    "cumulative_amount",
+    "currency",
+    "valid_from",
+    "valid_until",
+    "required_approvals",
+    "signature"
+  ],
+  "title": "Mandate",
+  "type": "object"
+}

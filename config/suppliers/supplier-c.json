@@ -1,0 +1,17 @@
+{
+  "name": "ТехРесурс",
+  "currency": "RUB",
+  "vat_rate": "0.20",
+  "categories": ["mro.standardized"],
+  "items": [
+    {
+      "sku": "BEARING-6205-2RS",
+      "name": "Подшипник 6205-2RS",
+      "unit_price": "930.00",
+      "delivery_fee": "0.00",
+      "delivery_days": 2,
+      "warranty_months": 24,
+      "payment_delay_days": 15
+    }
+  ]
+}

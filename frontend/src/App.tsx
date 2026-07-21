@@ -1,0 +1,1309 @@
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
+import { api } from "./api";
+import type {
+  Deal,
+  DealEvent,
+  DealInput,
+  DemoConfig,
+  EvidenceBundle,
+  EvaluatedQuote,
+  Health,
+  SupplierSummary
+} from "./types";
+
+const EMPTY_INPUT: DealInput = {
+  customerId: "",
+  authorizedBy: "",
+  sku: "",
+  productName: "",
+  quantity: 0,
+  deliveryCity: "",
+  deliveryDays: 0,
+  maxTotal: 0
+};
+
+let displayCurrency = "XXX";
+
+const EVENT_LABELS: Record<string, string> = {
+  deal_created: "Сделка создана",
+  mandate_validated: "Мандат проверен",
+  suppliers_discovered: "Поставщики обнаружены",
+  rfq_sent: "RFQ отправлен поставщику",
+  quote_received: "Оферта получена от A2",
+  quotes_collected: "Оферты получены",
+  quotes_ranked: "Оферты ранжированы",
+  comparison_explained: "Объяснение сформировано",
+  workflow_completed: "Workflow завершён",
+  supplier_request_failed: "Поставщик не ответил",
+  workflow_failed: "Workflow завершился с ошибкой",
+  approval_snapshot_created: "Зафиксирован снимок условий",
+  quote_approved: "Оферта подтверждена",
+  award_sent: "Award отправлен выбранному A2",
+  supplier_rejected: "Невыбранный A2 уведомлён",
+  order_confirmed: "A2 подтвердил заказ",
+  payment_draft_created: "Черновик платежа создан",
+  fulfillment_updated: "Статус исполнения обновлён",
+  document_registered: "Документ зарегистрирован",
+  deal_completed: "Сделка завершена",
+  order_created: "Заказ создан"
+};
+
+const STATUS_LABELS = {
+  draft: "Черновик",
+  awaiting_approval: "Ожидает подтверждения",
+  order_created: "Заказ создан",
+  fulfilling: "Исполнение",
+  completed: "Завершена",
+  failed: "Ошибка"
+  ,rejected: "Отклонена"
+  ,changes_requested: "Запрошены изменения"
+  ,payment_signature_required: "Ожидает подписи платежа"
+} as const;
+
+interface ClientLog {
+  id: number;
+  level: "info" | "success" | "error";
+  message: string;
+  timestamp: Date;
+}
+
+function formatMoney(value: string | number, currency = displayCurrency): string {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2
+  }).format(Number(value));
+}
+
+function formatTime(value: string | Date): string {
+  return new Intl.DateTimeFormat("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    fractionalSecondDigits: 3
+  }).format(new Date(value));
+}
+
+function shortId(value: string | null | undefined): string {
+  return value ? `${value.slice(0, 8)}…${value.slice(-4)}` : "—";
+}
+
+function detailValue(value: unknown): string {
+  if (value === null || value === undefined) return "-";
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return String(value);
+  }
+  return JSON.stringify(value);
+}
+
+function eventTarget(event: DealEvent): string {
+  const target = event.details.target;
+  return typeof target === "string" ? target : "internal";
+}
+
+function eventMessageType(event: DealEvent): string {
+  const messageType = event.details.message_type;
+  return typeof messageType === "string" ? messageType : event.event_type;
+}
+
+function visibleDetails(details: Record<string, unknown>): Record<string, unknown> {
+  const payloadSummary = details.payload_summary;
+  const flat = Object.fromEntries(
+    Object.entries(details).filter(
+      ([key]) => !["target", "message_type", "payload_summary"].includes(key)
+    )
+  );
+  if (
+    payloadSummary &&
+    typeof payloadSummary === "object" &&
+    !Array.isArray(payloadSummary)
+  ) {
+    return { ...flat, ...(payloadSummary as Record<string, unknown>) };
+  }
+  return flat;
+}
+
+function App() {
+  const [health, setHealth] = useState<Health | null>(null);
+  const [demoConfig, setDemoConfig] = useState<DemoConfig | null>(null);
+  const [suppliers, setSuppliers] = useState<SupplierSummary[]>([]);
+  const [history, setHistory] = useState<Deal[]>([]);
+  const [deal, setDeal] = useState<Deal | null>(null);
+  const [input, setInput] = useState<DealInput>(EMPTY_INPUT);
+  const [selectedQuote, setSelectedQuote] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"ledger" | "evidence" | "json">(
+    "ledger"
+  );
+  const [evidence, setEvidence] = useState<EvidenceBundle | null>(null);
+  const [clientLogs, setClientLogs] = useState<ClientLog[]>([]);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  const addClientLog = useCallback(
+    (level: ClientLog["level"], message: string) => {
+      setClientLogs((current) => [
+        ...current,
+        {
+          id: Date.now() + Math.random(),
+          level,
+          message,
+          timestamp: new Date()
+        }
+      ]);
+    },
+    []
+  );
+
+  const loadSystem = useCallback(async () => {
+    try {
+      const config = await api.demoConfig();
+      setDemoConfig(config);
+      api.configureIdentity(config.approver_subject);
+      displayCurrency = config.currency;
+      setInput((current) =>
+        current.sku
+          ? current
+          : {
+              customerId: config.organization_id,
+              authorizedBy: config.approver_subject,
+              sku: config.default_sku,
+              productName: config.default_product_name,
+              quantity: config.default_quantity,
+              deliveryCity: config.delivery_city,
+              deliveryDays: config.delivery_days,
+              maxTotal: Number(config.default_maximum_amount)
+            }
+      );
+      const [healthResult, supplierResult, dealsResult] = await Promise.all([
+        api.health(),
+        api.suppliers(),
+        api.deals()
+      ]);
+      setHealth(healthResult);
+      setSuppliers(supplierResult);
+      setHistory(dealsResult);
+    } catch (reason) {
+      setHealth(null);
+      setError(reason instanceof Error ? reason.message : "Backend недоступен");
+    }
+  }, []);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadSystem);
+    return () => eventSourceRef.current?.close();
+  }, [loadSystem]);
+
+  const observeDeal = useCallback(
+    (dealId: string) => {
+      eventSourceRef.current?.close();
+      const source = new EventSource(
+        `/api/v1/deals/${dealId}/events/stream`
+      );
+      eventSourceRef.current = source;
+      source.addEventListener("deal_event", (event) => {
+        const payload = JSON.parse((event as MessageEvent).data) as DealEvent;
+        addClientLog(
+          payload.event_type === "supplier_request_failed" ? "error" : "info",
+          EVENT_LABELS[payload.event_type] ?? payload.event_type
+        );
+        void api.getDeal(dealId).then((current) => {
+          setDeal(current);
+          setHistory((items) => [
+            current,
+            ...items.filter((item) => item.deal_id !== current.deal_id)
+          ]);
+          if (current.comparison?.recommended_quote_id) {
+            setSelectedQuote(current.comparison.recommended_quote_id);
+          }
+        });
+      });
+      source.addEventListener("stream_complete", () => {
+        source.close();
+        void api.getDeal(dealId).then((current) => {
+          setDeal(current);
+          setHistory((items) => [
+            current,
+            ...items.filter((item) => item.deal_id !== current.deal_id)
+          ]);
+          setSelectedQuote(
+            current.comparison?.recommended_quote_id ?? null
+          );
+          addClientLog(
+            current.status === "failed" ? "error" : "success",
+            current.status === "failed"
+              ? "A1 не смог завершить закупочный workflow"
+              : `A1 завершил прямой RFQ: получено ${current.quotes.length} оферт`
+          );
+        });
+      });
+      source.onerror = () => {
+        source.close();
+      };
+    },
+    [addClientLog]
+  );
+
+  useEffect(() => {
+    const dealId = new URLSearchParams(window.location.search).get("deal");
+    if (!dealId) return;
+    void api.getDeal(dealId).then((current) => {
+      setDeal(current);
+      setSelectedQuote(current.comparison?.recommended_quote_id ?? null);
+      if (current.status === "draft") {
+        observeDeal(current.deal_id);
+      }
+    });
+  }, [observeDeal]);
+
+
+  const createDeal = async (event: FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    setClientLogs([]);
+    addClientLog("info", "A1 отправляет подписанные RFQ напрямую агентам A2");
+    try {
+      if (!demoConfig) throw new Error("Demo configuration is not loaded");
+      const result = await api.createDeal(input, demoConfig);
+      setDeal(result);
+      window.history.replaceState(null, "", `/?deal=${result.deal_id}`);
+      setHistory((items) => [
+        result,
+        ...items.filter((item) => item.deal_id !== result.deal_id)
+      ]);
+      setSelectedQuote(null);
+      addClientLog("success", `Сделка ${shortId(result.deal_id)} принята A1`);
+      observeDeal(result.deal_id);
+    } catch (reason) {
+      const message =
+        reason instanceof Error ? reason.message : "Не удалось создать сделку";
+      setError(message);
+      addClientLog("error", message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshDeal = async () => {
+    if (!deal) return;
+    try {
+      const result = await api.getDeal(deal.deal_id);
+      setDeal(result);
+      addClientLog("info", "Состояние сделки обновлено из Deal Ledger");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Ошибка обновления");
+    }
+  };
+
+  const loadEvidence = async () => {
+    if (!deal) return;
+    try {
+      const result = await api.evidence(deal.deal_id);
+      setEvidence(result);
+      addClientLog("info", "Evidence bundle выгружен из доверенного контура");
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Не удалось выгрузить evidence"
+      );
+    }
+  };
+
+  const approveQuote = async () => {
+    if (!deal || !selectedQuote) return;
+    setLoading(true);
+    setError(null);
+    addClientLog("info", `Подтверждение оферты ${shortId(selectedQuote)}`);
+    try {
+      const result = await api.approve(
+        deal.deal_id,
+        selectedQuote,
+        deal.mandate.authorized_by,
+        deal.approval_snapshot?.snapshot_hash ?? ""
+      );
+      addClientLog(
+        "success",
+        `Создан заказ ${shortId(result.order_id)}, snapshot ${shortId(
+          result.approval_snapshot_hash
+        )}`
+      );
+      const refreshed = await api.getDeal(deal.deal_id);
+      setDeal(refreshed);
+    } catch (reason) {
+      const message =
+        reason instanceof Error ? reason.message : "Подтверждение не выполнено";
+      setError(message);
+      addClientLog("error", message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const decideQuote = async (decision: "reject" | "request_changes") => {
+    if (!deal || !selectedQuote || !deal.approval_snapshot) return;
+    setLoading(true);
+    try {
+      const refreshed = await api.decide(
+        deal.deal_id,
+        selectedQuote,
+        deal.mandate.authorized_by,
+        deal.approval_snapshot.snapshot_hash,
+        decision
+      );
+      setDeal(refreshed);
+      addClientLog("success", `Решение человека: ${decision}`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Решение не сохранено");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signPayment = async () => {
+    if (!deal?.payment_draft_id) return;
+    setLoading(true);
+    try {
+      await api.signPayment(deal);
+      const refreshed = await api.getDeal(deal.deal_id);
+      setDeal(refreshed);
+      addClientLog("success", "Черновик платежа подписан человеком в demo-контуре");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Подпись не выполнена");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectedEvaluation = useMemo(
+    () =>
+      deal?.comparison?.evaluated_quotes.find(
+        (item) => item.quote.quote_id === selectedQuote
+      ) ?? null,
+    [deal, selectedQuote]
+  );
+
+  return (
+    <div className="app-shell">
+      <Header health={health} onRefresh={loadSystem} />
+
+      <main className="workspace">
+        <aside className="control-panel">
+          <section className="panel-heading">
+            <div>
+              <p className="eyebrow">Новая закупка</p>
+              <h2>Параметры A1</h2>
+            </div>
+            <span className="role-badge role-a1">A1</span>
+          </section>
+
+          <DealForm
+            input={input}
+            loading={loading}
+            onChange={setInput}
+            onSubmit={createDeal}
+          />
+
+          {deal && (
+            <section className="current-deal">
+              <div className="section-title-row">
+                <h3>Текущая сделка</h3>
+                <button className="icon-button" onClick={refreshDeal} title="Обновить">
+                  ↻
+                </button>
+              </div>
+              <dl>
+                <div>
+                  <dt>Deal ID</dt>
+                  <dd title={deal.deal_id}>{shortId(deal.deal_id)}</dd>
+                </div>
+                <div>
+                  <dt>Мандат</dt>
+                  <dd title={deal.mandate.mandate_id}>
+                    {shortId(deal.mandate.mandate_id)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Статус</dt>
+                  <dd>
+                    <StatusBadge status={deal.status} />
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          )}
+
+          <section className="deal-history">
+            <div className="section-title-row">
+              <h3>История сделок</h3>
+              <span>{history.length}</span>
+            </div>
+            {history.length === 0 ? (
+              <p className="history-empty">Сделок пока нет</p>
+            ) : (
+              <div className="history-list">
+                {history.map((item) => (
+                  <button
+                    className={
+                      item.deal_id === deal?.deal_id ? "active" : ""
+                    }
+                    key={item.deal_id}
+                    onClick={() => {
+                      setDeal(item);
+                      setSelectedQuote(
+                        item.comparison?.recommended_quote_id ?? null
+                      );
+                      window.history.replaceState(
+                        null,
+                        "",
+                        `/?deal=${item.deal_id}`
+                      );
+                      if (item.status === "draft") {
+                        observeDeal(item.deal_id);
+                      }
+                    }}
+                  >
+                    <span>{item.intent.product.sku}</span>
+                    <small>{shortId(item.deal_id)}</small>
+                    <StatusBadge status={item.status} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        </aside>
+
+        <section className="main-stage">
+          {error && (
+            <div className="error-banner">
+              <span>!</span>
+              <p>{error}</p>
+              <button onClick={() => setError(null)}>×</button>
+            </div>
+          )}
+
+          <AgentFlow
+            suppliers={suppliers}
+            deal={deal}
+            loading={loading}
+          />
+
+          {!deal ? (
+            <EmptyState />
+          ) : (
+            <>
+              <DealOverview deal={deal} />
+              <QuoteComparison
+                deal={deal}
+                selectedQuote={selectedQuote}
+                onSelect={setSelectedQuote}
+              />
+
+              <div className="decision-panel">
+                <div>
+                  <p className="eyebrow">Human-in-the-loop</p>
+                  <h3>Подтверждение существенных условий</h3>
+                  <p>
+                    A1 не создаст Purchase Intent без явного решения пользователя;
+                    Trusted Infrastructure создаст только черновик платежа.
+                  </p>
+                </div>
+                <div className="decision-summary">
+                  <span>Выбрано</span>
+                  <strong>
+                    {selectedEvaluation?.quote.supplier_name ?? "Нет оферты"}
+                  </strong>
+                  <small>
+                    {selectedEvaluation
+                      ? formatMoney(
+                          Number(selectedEvaluation.quote.unit_price) *
+                            selectedEvaluation.quote.quantity +
+                            Number(selectedEvaluation.quote.delivery_fee)
+                        )
+                      : "—"}
+                  </small>
+                </div>
+                <div className="decision-actions">
+                  <button
+                    className="primary-button approve-button"
+                    disabled={
+                      loading ||
+                      deal.status !== "awaiting_approval" ||
+                      !deal.approval_snapshot?.snapshot_hash ||
+                      !selectedEvaluation?.eligible
+                    }
+                    onClick={approveQuote}
+                  >
+                    Подтвердить условия
+                  </button>
+                  <button
+                    disabled={loading || deal.status !== "awaiting_approval"}
+                    onClick={() => void decideQuote("request_changes")}
+                  >
+                    Запросить изменения
+                  </button>
+                  <button
+                    disabled={loading || deal.status !== "awaiting_approval"}
+                    onClick={() => void decideQuote("reject")}
+                  >
+                    Отклонить
+                  </button>
+                </div>
+              </div>
+
+              {deal.status === "payment_signature_required" && (
+                <div className="decision-panel payment-signature-panel">
+                  <div>
+                    <p className="eyebrow">Отдельный human step</p>
+                    <h3>Подпись черновика платежа</h3>
+                    <p>
+                      Oracle verification пройдена. Автоматического списания нет:
+                      подтвердите mock-банковскую подпись отдельно.
+                    </p>
+                  </div>
+                  <button
+                    className="primary-button"
+                    disabled={loading}
+                    onClick={() => void signPayment()}
+                  >
+                    Подписать payment draft
+                  </button>
+                </div>
+              )}
+
+              {(deal.status === "order_created" ||
+                deal.status === "fulfilling" ||
+                deal.status === "payment_signature_required" ||
+                deal.status === "completed") && (
+                <OrderResult deal={deal} />
+              )}
+            </>
+          )}
+        </section>
+
+        <aside className="observability-panel">
+          <div className="tabs">
+            <button
+              className={activeTab === "ledger" ? "active" : ""}
+              onClick={() => setActiveTab("ledger")}
+            >
+              Deal Ledger
+            </button>
+            <button
+              className={activeTab === "evidence" ? "active" : ""}
+              onClick={() => {
+                setActiveTab("evidence");
+                void loadEvidence();
+              }}
+            >
+              Evidence
+            </button>
+            <button
+              className={activeTab === "json" ? "active" : ""}
+              onClick={() => setActiveTab("json")}
+            >
+              Raw JSON
+            </button>
+          </div>
+
+          {activeTab === "ledger" ? (
+            <EventLedger
+              events={deal?.events ?? []}
+              clientLogs={clientLogs}
+              loading={loading}
+            />
+          ) : activeTab === "evidence" ? (
+            <EvidencePanel evidence={evidence} deal={deal} onLoad={loadEvidence} />
+          ) : (
+            <pre className="raw-json">
+              {deal
+                ? JSON.stringify(deal, null, 2)
+                : "// Создайте сделку, чтобы увидеть state A1"}
+            </pre>
+          )}
+        </aside>
+      </main>
+    </div>
+  );
+}
+
+function Header({
+  health,
+  onRefresh
+}: {
+  health: Health | null;
+  onRefresh: () => Promise<void>;
+}) {
+  return (
+    <header className="topbar">
+      <div className="brand">
+        <div className="brand-mark">A1</div>
+        <div>
+          <h1>A2A Control Room</h1>
+          <p>Direct A1 ↔ A2 · Trusted Infrastructure controls</p>
+        </div>
+      </div>
+      <div className="topbar-status">
+        <button className="system-chip" onClick={() => void onRefresh()}>
+          <span className={`status-dot ${health ? "online" : "offline"}`} />
+          API {health ? "online" : "offline"}
+        </button>
+        <div className="system-chip">
+          <span className={`status-dot ${health?.llm_enabled ? "llm" : "muted"}`} />
+          LLM {health?.llm_enabled ? health.llm_provider : "disabled"}
+        </div>
+        <div className="system-chip demo-chip">DEMO / MOCK</div>
+        <a className="docs-link" href="/docs" target="_blank" rel="noreferrer">
+          API docs ↗
+        </a>
+      </div>
+    </header>
+  );
+}
+
+function DealForm({
+  input,
+  loading,
+  onChange,
+  onSubmit
+}: {
+  input: DealInput;
+  loading: boolean;
+  onChange: (value: DealInput) => void;
+  onSubmit: (event: FormEvent) => void;
+}) {
+  const update = <K extends keyof DealInput>(key: K, value: DealInput[K]) =>
+    onChange({ ...input, [key]: value });
+
+  return (
+    <form className="deal-form" onSubmit={onSubmit}>
+      <label>
+        Клиент
+        <input
+          value={input.customerId}
+          onChange={(event) => update("customerId", event.target.value)}
+          required
+        />
+      </label>
+      <label>
+        Уполномоченный
+        <input
+          value={input.authorizedBy}
+          onChange={(event) => update("authorizedBy", event.target.value)}
+          required
+        />
+      </label>
+      <div className="form-divider" />
+      <label>
+        SKU
+        <input
+          value={input.sku}
+          onChange={(event) => update("sku", event.target.value)}
+          required
+        />
+      </label>
+      <label>
+        Наименование
+        <input
+          value={input.productName}
+          onChange={(event) => update("productName", event.target.value)}
+          required
+        />
+      </label>
+      <div className="form-grid">
+        <label>
+          Количество
+          <input
+            type="number"
+            min="1"
+            value={input.quantity}
+            onChange={(event) => update("quantity", Number(event.target.value))}
+            required
+          />
+        </label>
+        <label>
+          Срок, дней
+          <input
+            type="number"
+            min="1"
+            value={input.deliveryDays}
+            onChange={(event) =>
+              update("deliveryDays", Number(event.target.value))
+            }
+            required
+          />
+        </label>
+      </div>
+      <label>
+        Город доставки
+        <input
+          value={input.deliveryCity}
+          onChange={(event) => update("deliveryCity", event.target.value)}
+          required
+        />
+      </label>
+      <label>
+        Лимит сделки
+        <input
+          type="number"
+          min="1"
+          step="0.01"
+          value={input.maxTotal}
+          onChange={(event) => update("maxTotal", Number(event.target.value))}
+          required
+        />
+      </label>
+      <button className="primary-button" disabled={loading}>
+        {loading ? (
+          <>
+            <span className="spinner" /> A1 выполняет workflow
+          </>
+        ) : (
+          "Запросить предложения"
+        )}
+      </button>
+    </form>
+  );
+}
+
+function AgentFlow({
+  suppliers,
+  deal,
+  loading
+}: {
+  suppliers: SupplierSummary[];
+  deal: Deal | null;
+  loading: boolean;
+}) {
+  const activeSuppliers = new Set(deal?.supplier_ids ?? []);
+  return (
+    <section className="agent-flow-card">
+      <div className="agent-node client-node">
+        <div className="node-icon">A1</div>
+        <div>
+          <strong>Покупатель</strong>
+          <span>{deal?.intent.customer_id ?? "Ожидает intent"}</span>
+        </div>
+      </div>
+      <FlowConnector active={Boolean(deal) || loading} label="Need + мандат" />
+      <div className={`agent-node sber-node ${loading ? "processing" : ""}`}>
+        <div className="node-icon">A1</div>
+        <div>
+          <strong>Buyer Agent</strong>
+          <span>Direct RFQ · Validation · Ranking</span>
+        </div>
+        {loading && <span className="node-pulse" />}
+      </div>
+      <FlowConnector
+        active={Boolean(deal?.supplier_ids.length) || loading}
+        label="Signed A2A RFQ"
+      />
+      <div className="supplier-cluster">
+        {suppliers.map((supplier, index) => (
+          <div
+            className={`supplier-node ${
+              activeSuppliers.has(supplier.supplier_id) ? "active" : ""
+            }`}
+            key={supplier.supplier_id}
+          >
+            <span>A2.{index + 1}</span>
+            <div>
+              <strong>{supplier.name}</strong>
+              <small>{supplier.active ? "Аккредитован" : "Отключён"}</small>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function FlowConnector({
+  active,
+  label
+}: {
+  active: boolean;
+  label: string;
+}) {
+  return (
+    <div className={`flow-connector ${active ? "active" : ""}`}>
+      <span>{label}</span>
+      <div className="flow-line">
+        <i />
+      </div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <section className="empty-state">
+      <div className="empty-illustration">
+        <span>A1</span>
+        <i />
+        <span className="center">A1</span>
+        <i />
+        <span>A2</span>
+      </div>
+      <p className="eyebrow">Система готова</p>
+      <h2>Создайте закупочную потребность</h2>
+      <p>
+        A1 напрямую обратится к A2, а Trusted Infrastructure проверит мандат,
+        policy/fraud и последующие финансовые действия.
+      </p>
+    </section>
+  );
+}
+
+function DealOverview({ deal }: { deal: Deal }) {
+  const eligible =
+    deal.comparison?.evaluated_quotes.filter((item) => item.eligible).length ?? 0;
+  return (
+    <section className="metrics-grid">
+      <Metric
+        label="Получено оферт"
+        value={String(deal.quotes.length)}
+        hint={`из ${deal.supplier_ids.length} запросов`}
+      />
+      <Metric
+        label="Прошли ограничения"
+        value={String(eligible)}
+        hint="hard constraints"
+      />
+      <Metric
+        label="Лимит мандата"
+        value={formatMoney(deal.mandate.max_total)}
+        hint={`до ${new Date(deal.mandate.expires_at).toLocaleDateString("ru-RU")}`}
+      />
+      <Metric
+        label="Событий в Ledger"
+        value={String(deal.events.length)}
+        hint="полный audit trail"
+      />
+    </section>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  hint
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <article className="metric-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <small>{hint}</small>
+    </article>
+  );
+}
+
+function QuoteComparison({
+  deal,
+  selectedQuote,
+  onSelect
+}: {
+  deal: Deal;
+  selectedQuote: string | null;
+  onSelect: (id: string) => void;
+}) {
+  const items = deal.comparison?.evaluated_quotes ?? [];
+  return (
+    <section className="quote-section">
+      <div className="section-title-row">
+        <div>
+          <p className="eyebrow">Decision support</p>
+          <h2>Сравнение оферт</h2>
+        </div>
+        <span className="ranking-version">
+          {deal.comparison?.ranking_version ?? "—"}
+        </span>
+      </div>
+
+      {deal.comparison && (
+        <div className="explanation">
+          <span>i</span>
+          <p>{deal.comparison.explanation}</p>
+        </div>
+      )}
+
+      <div className="quote-grid">
+        {items.map((item, index) => (
+          <QuoteCard
+            key={item.quote.quote_id}
+            item={item}
+            rank={index + 1}
+            recommended={
+              item.quote.quote_id === deal.comparison?.recommended_quote_id
+            }
+            selected={item.quote.quote_id === selectedQuote}
+            disabled={deal.status !== "awaiting_approval"}
+            onSelect={() => onSelect(item.quote.quote_id)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function QuoteCard({
+  item,
+  rank,
+  recommended,
+  selected,
+  disabled,
+  onSelect
+}: {
+  item: EvaluatedQuote;
+  rank: number;
+  recommended: boolean;
+  selected: boolean;
+  disabled: boolean;
+  onSelect: () => void;
+}) {
+  const total =
+    Number(item.quote.unit_price) * item.quote.quantity +
+    Number(item.quote.delivery_fee);
+  const score = Number(item.total_score ?? 0);
+  return (
+    <button
+      className={`quote-card ${selected ? "selected" : ""} ${
+        !item.eligible ? "ineligible" : ""
+      }`}
+      disabled={!item.eligible || disabled}
+      onClick={onSelect}
+    >
+      <div className="quote-card-head">
+        <span className="rank">#{rank}</span>
+        {recommended && <span className="recommended">Детерминированный ranking A1</span>}
+        {!item.eligible && <span className="rejected">Отклонено</span>}
+      </div>
+      <h3>{item.quote.supplier_name}</h3>
+      <p className="supplier-id">{item.quote.supplier_id}</p>
+      <strong className="quote-price">{formatMoney(total)}</strong>
+      <small>
+        {formatMoney(item.quote.unit_price)} × {item.quote.quantity} + доставка
+      </small>
+
+      <div className="quote-details">
+        <div>
+          <span>Поставка</span>
+          <strong>{item.quote.delivery_days} дн.</strong>
+        </div>
+        <div>
+          <span>Гарантия</span>
+          <strong>{item.quote.warranty_months} мес.</strong>
+        </div>
+        <div>
+          <span>Отсрочка</span>
+          <strong>{item.quote.payment_delay_days} дн.</strong>
+        </div>
+      </div>
+
+      {item.eligible ? (
+        <div className="score-block">
+          <div>
+            <span>Итоговый score</span>
+            <strong>{item.total_score}</strong>
+          </div>
+          <div className="score-track">
+            <i style={{ width: `${score}%` }} />
+          </div>
+        </div>
+      ) : (
+        <ul className="rejection-list">
+          {item.rejection_reasons.map((reason) => (
+            <li key={reason}>{reason}</li>
+          ))}
+        </ul>
+      )}
+    </button>
+  );
+}
+
+function EventLedger({
+  events,
+  clientLogs,
+  loading
+}: {
+  events: DealEvent[];
+  clientLogs: ClientLog[];
+  loading: boolean;
+}) {
+  return (
+    <div className="ledger">
+      <div className="ledger-header">
+        <div>
+          <p className="eyebrow">Observability</p>
+          <h2>Журнал действий</h2>
+        </div>
+        <span>{events.length + clientLogs.length}</span>
+      </div>
+
+      {events.length === 0 && clientLogs.length === 0 && (
+        <div className="empty-logs">
+          <span>_</span>
+          <p>События появятся после запуска workflow</p>
+        </div>
+      )}
+
+      <div className="timeline">
+        {clientLogs.map((log) => (
+          <article className={`timeline-item client ${log.level}`} key={log.id}>
+            <div className="timeline-marker" />
+            <div className="timeline-content">
+              <time>{formatTime(log.timestamp)}</time>
+              <strong>Frontend</strong>
+              <p>{log.message}</p>
+            </div>
+          </article>
+        ))}
+
+        {events.map((event, index) => (
+          <article className="timeline-item" key={`${event.created_at}-${index}`}>
+            <div className="timeline-marker" />
+            <div className="timeline-content">
+              <time>{formatTime(event.created_at)}</time>
+              <div className="event-title">
+                <strong>{EVENT_LABELS[event.event_type] ?? event.event_type}</strong>
+                <span>{eventMessageType(event)}</span>
+              </div>
+              <div className="event-route">
+                <span>{event.actor}</span>
+                <i />
+                <span>{eventTarget(event)}</span>
+              </div>
+              <DetailGrid details={visibleDetails(event.details)} />
+            </div>
+          </article>
+        ))}
+
+        {loading && (
+          <article className="timeline-item pending">
+            <div className="timeline-marker" />
+            <div className="timeline-content">
+              <strong>A1 выполняет следующий шаг…</strong>
+            </div>
+          </article>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DetailGrid({ details }: { details: Record<string, unknown> }) {
+  const entries = Object.entries(details);
+  if (entries.length === 0) {
+    return null;
+  }
+  return (
+    <dl className="detail-grid">
+      {entries.map(([key, value]) => (
+        <div key={key}>
+          <dt>{key}</dt>
+          <dd title={detailValue(value)}>{detailValue(value)}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function EvidencePanel({
+  evidence,
+  deal,
+  onLoad
+}: {
+  evidence: EvidenceBundle | null;
+  deal: Deal | null;
+  onLoad: () => Promise<void>;
+}) {
+  if (!deal) {
+    return (
+      <div className="empty-logs">
+        <span>_</span>
+        <p>Создайте сделку, чтобы выгрузить evidence bundle</p>
+      </div>
+    );
+  }
+  if (!evidence) {
+    return (
+      <div className="evidence-panel">
+        <button className="primary-button" onClick={() => void onLoad()}>
+          Выгрузить evidence
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="evidence-panel">
+      <div className="ledger-header">
+        <div>
+          <p className="eyebrow">Audit export</p>
+          <h2>Evidence bundle</h2>
+        </div>
+        <button className="icon-button" onClick={() => void onLoad()} title="Обновить">
+          ↻
+        </button>
+      </div>
+      <div className="evidence-grid">
+        <EvidenceMetric label="Events" value={evidence.events.length} />
+        <EvidenceMetric label="Outbox" value={evidence.outbox_messages.length} />
+        <EvidenceMetric label="Docs" value={evidence.documents.length} />
+        <EvidenceMetric label="Fulfillment" value={evidence.fulfillment.length} />
+      </div>
+      <div className="evidence-section">
+        <strong>Snapshot hash</strong>
+        <code>{evidence.approval_snapshot?.snapshot_hash ?? "—"}</code>
+      </div>
+      <div className="evidence-section">
+        <strong>Human decision</strong>
+        <code>{evidence.human_decision?.decision ?? "—"}</code>
+      </div>
+      <div className="evidence-section">
+        <strong>Purchase Intent</strong>
+        <code>{evidence.purchase_intent?.intent_id ?? "—"}</code>
+      </div>
+      <div className="evidence-section">
+        <strong>Ledger anchor</strong>
+        <code>{evidence.ledger_anchor?.current_hash ?? "—"}</code>
+      </div>
+      <div className="evidence-section">
+        <strong>Oracle verification</strong>
+        <code>
+          {evidence.oracle_verification
+            ? evidence.oracle_verification.verified
+              ? "verified"
+              : "denied"
+            : "—"}
+        </code>
+      </div>
+      <div className="evidence-section">
+        <strong>Policy / fraud decisions</strong>
+        <code>
+          {evidence.policy_decisions.length} / {evidence.fraud_decisions.length}
+        </code>
+      </div>
+      <div className="evidence-section">
+        <strong>Outbox messages</strong>
+        {evidence.outbox_messages.map((message) => (
+          <div className="outbox-row" key={message.outbox_id}>
+            <span>{message.message_type}</span>
+            <small>{message.recipient_agent_id}</small>
+            <code>{message.status}</code>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EvidenceMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="evidence-metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function OrderResult({ deal }: { deal: Deal }) {
+  const snapshot = deal.approval_snapshot;
+  const payment = deal.payment_draft;
+  return (
+    <section className="order-result">
+      <div className="success-icon">✓</div>
+      <div>
+        <p className="eyebrow">Transaction result</p>
+        <h2>Сделка оформлена и исполнена в demo-контуре</h2>
+        <p>
+          A1 отправил award выбранному A2 после approval и отдельной подписи
+          payment draft. Trusted Infrastructure проверил intent и Oracle;
+          автоматического списания не выполнялось.
+        </p>
+      </div>
+      <dl>
+        <div>
+          <dt>Order ID</dt>
+          <dd title={deal.order_id ?? ""}>{shortId(deal.order_id)}</dd>
+        </div>
+        <div>
+          <dt>Payment draft</dt>
+          <dd title={deal.payment_draft_id ?? ""}>
+            {shortId(deal.payment_draft_id)}
+          </dd>
+        </div>
+        <div>
+          <dt>Snapshot hash</dt>
+          <dd title={snapshot?.snapshot_hash ?? ""}>
+            {shortId(snapshot?.snapshot_hash)}
+          </dd>
+        </div>
+        <div>
+          <dt>Payment status</dt>
+          <dd>{payment?.status ?? "—"}</dd>
+        </div>
+      </dl>
+      {snapshot && (
+        <div className="snapshot-panel">
+          <h3>Approval snapshot</h3>
+          <div className="snapshot-grid">
+            <span>{snapshot.supplier_name}</span>
+            <span>{formatMoney(snapshot.total_cost, snapshot.currency)}</span>
+            <span>{snapshot.delivery_days} дн.</span>
+            <span>{snapshot.warranty_months} мес.</span>
+          </div>
+        </div>
+      )}
+      <div className="fulfillment-panel">
+        <h3>Fulfillment</h3>
+        <div className="fulfillment-list">
+          {deal.fulfillment.map((item) => (
+            <div className="fulfillment-step" key={`${item.status}-${item.created_at}`}>
+              <span />
+              <div>
+                <strong>{item.status}</strong>
+                <small>{String(item.details.description ?? item.actor)}</small>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="document-panel">
+        <h3>Mock documents</h3>
+        <div className="document-list">
+          {deal.documents.map((document) => (
+            <div className="document-row" key={document.document_id}>
+              <strong>{document.title}</strong>
+              <span>{document.document_type}</span>
+              <code title={document.sha256}>{shortId(document.sha256)}</code>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StatusBadge({ status }: { status: Deal["status"] }) {
+  return (
+    <span className={`deal-status status-${status}`}>
+      {STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+export default App;

@@ -1,0 +1,26 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "captured_at": {
+      "format": "date-time",
+      "title": "Captured At",
+      "type": "string"
+    },
+    "card": {
+      "additionalProperties": true,
+      "title": "Card",
+      "type": "object"
+    },
+    "card_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Card Hash",
+      "type": "string"
+    }
+  },
+  "required": [
+    "card_hash",
+    "card"
+  ],
+  "title": "AgentCardSnapshot",
+  "type": "object"
+}

@@ -1,0 +1,58 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "amount": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "type": "string"
+        }
+      ],
+      "title": "Amount"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "currency": {
+      "title": "Currency",
+      "type": "string"
+    },
+    "payment_draft_id": {
+      "format": "uuid",
+      "title": "Payment Draft Id",
+      "type": "string"
+    },
+    "recipient_binding_hash": {
+      "title": "Recipient Binding Hash",
+      "type": "string"
+    },
+    "request_id": {
+      "format": "uuid",
+      "title": "Request Id",
+      "type": "string"
+    },
+    "requires_human_signature": {
+      "default": true,
+      "title": "Requires Human Signature",
+      "type": "boolean"
+    },
+    "status": {
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "request_id",
+    "status",
+    "amount",
+    "currency",
+    "recipient_binding_hash"
+  ],
+  "title": "PaymentDraft",
+  "type": "object"
+}

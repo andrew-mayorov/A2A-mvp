@@ -1,0 +1,250 @@
+x-app-security: &app-security
+  read_only: true
+  cap_drop: ["ALL"]
+  security_opt: ["no-new-privileges:true"]
+  tmpfs:
+    - /tmp:size=64m,mode=1777
+    - /app/data:size=64m,uid=10001,gid=10001
+  deploy:
+    resources:
+      limits:
+        cpus: "1.0"
+        memory: 512M
+
+x-app-env: &app-env
+  APP_HOST: 0.0.0.0
+  RUNTIME_CONFIG_FILE: config/demo.toml
+  DEMO_IDENTITY_ENABLED: "true"
+  LLM_PROVIDER: ${LLM_PROVIDER:-disabled}
+  LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-8}
+  LLM_MAX_ATTEMPTS: ${LLM_MAX_ATTEMPTS:-2}
+  LLM_MAX_TOKENS: ${LLM_MAX_TOKENS:-800}
+  LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
+  OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-}
+  OPENROUTER_ALLOWED_MODELS: ${OPENROUTER_ALLOWED_MODELS:-}
+  OPENROUTER_ALLOWED_PROVIDERS: ${OPENROUTER_ALLOWED_PROVIDERS:-}
+  OPENROUTER_APP_URL: ${OPENROUTER_APP_URL:-}
+  OPENROUTER_APP_TITLE: ${OPENROUTER_APP_TITLE:-}
+  OPENROUTER_DATA_RETENTION: ${OPENROUTER_DATA_RETENTION:-deny}
+  GIGACHAT_CREDENTIALS: ${GIGACHAT_CREDENTIALS:-}
+  GIGACHAT_ACCESS_TOKEN: ${GIGACHAT_ACCESS_TOKEN:-}
+  GIGACHAT_MODEL: ${GIGACHAT_MODEL:-}
+  GIGACHAT_SCOPE: ${GIGACHAT_SCOPE:-}
+  GIGACHAT_OAUTH_URL: ${GIGACHAT_OAUTH_URL:-}
+  GIGACHAT_BASE_URL: ${GIGACHAT_BASE_URL:-}
+  GIGACHAT_CA_BUNDLE_FILE: ${GIGACHAT_CA_BUNDLE_FILE:-}
+  GIGACHAT_VERIFY_SSL_CERTS: ${GIGACHAT_VERIFY_SSL_CERTS:-true}
+
+services:
+  bootstrap:
+    build: .
+    command: python scripts/bootstrap_demo.py
+    user: "0:0"
+    environment:
+      RUNTIME_CONFIG_FILE: config/demo.toml
+      BOOTSTRAP_OUTPUT_DIR: /run/a2a-bootstrap
+    volumes:
+      - a2a-bootstrap:/run/a2a-bootstrap
+    read_only: true
+    cap_drop: ["ALL"]
+    cap_add: ["CHOWN"]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  postgres:
+    image: postgres:17.5-alpine
+    depends_on:
+      bootstrap:
+        condition: service_completed_successfully
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - export POSTGRES_PASSWORD="$$(cat /run/a2a-bootstrap/database_password)"; exec docker-entrypoint.sh postgres
+    environment:
+      POSTGRES_DB: a2a
+      POSTGRES_USER: a2a
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U a2a -d a2a"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - a2a-postgres:/var/lib/postgresql/data
+      - a2a-bootstrap:/run/a2a-bootstrap:ro
+    cap_drop: ["ALL"]
+    cap_add: ["CHOWN", "DAC_OVERRIDE", "FOWNER", "SETGID", "SETUID"]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+
+  oidc:
+    image: ghcr.io/navikt/mock-oauth2-server:2.2.1
+    environment:
+      SERVER_PORT: 8080
+      JSON_CONFIG_PATH: /config/oidc.json
+    volumes:
+      - ./config/oidc.json:/config/oidc.json:ro
+    ports:
+      - "8081:8080"
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  migrations:
+    build: .
+    command:
+      - /bin/sh
+      - -ec
+      - export DATABASE_URL="postgresql+asyncpg://a2a:$$(cat /run/a2a-bootstrap/database_password)@postgres:5432/a2a"; exec alembic upgrade head
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      <<: *app-env
+    volumes:
+      - a2a-bootstrap:/run/a2a-bootstrap:ro
+    <<: *app-security
+
+  a2-1:
+    build: .
+    command: a2a-supplier
+    environment:
+      <<: *app-env
+      APP_PORT: 8201
+      PUBLIC_URL: http://a2-1:8201
+      SUPPLIER_ID: agent:demo:supplier-a
+    volumes:
+      - a2a-bootstrap:/run/a2a-bootstrap:ro
+    <<: *app-security
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8201/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  a2-2:
+    build: .
+    command: a2a-supplier
+    environment:
+      <<: *app-env
+      APP_PORT: 8202
+      PUBLIC_URL: http://a2-2:8202
+      SUPPLIER_ID: agent:demo:supplier-b
+    volumes:
+      - a2a-bootstrap:/run/a2a-bootstrap:ro
+    <<: *app-security
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8202/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  a2-3:
+    build: .
+    command: a2a-supplier
+    environment:
+      <<: *app-env
+      APP_PORT: 8203
+      PUBLIC_URL: http://a2-3:8203
+      SUPPLIER_ID: agent:demo:supplier-c
+    volumes:
+      - a2a-bootstrap:/run/a2a-bootstrap:ro
+    <<: *app-security
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8203/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  trust-api:
+    build: .
+    command:
+      - /bin/sh
+      - -ec
+      - export DATABASE_URL="postgresql+asyncpg://a2a:$$(cat /run/a2a-bootstrap/database_password)@postgres:5432/a2a"; exec a2a-trust-api
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+    environment:
+      <<: *app-env
+      APP_PORT: 8000
+      PUBLIC_URL: http://trust-api:8000
+    volumes:
+      - a2a-bootstrap:/run/a2a-bootstrap:ro
+    ports:
+      - "8000:8000"
+    <<: *app-security
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  a1:
+    build: .
+    command:
+      - /bin/sh
+      - -ec
+      - export DATABASE_URL="postgresql+asyncpg://a2a:$$(cat /run/a2a-bootstrap/database_password)@postgres:5432/a2a"; exec a2a-client-agent
+    depends_on:
+      migrations:
+        condition: service_completed_successfully
+      trust-api:
+        condition: service_healthy
+      a2-1:
+        condition: service_healthy
+      a2-2:
+        condition: service_healthy
+    environment:
+      <<: *app-env
+      APP_PORT: 8100
+      PUBLIC_URL: http://a1:8100
+      SUPPLIER_MODE: remote
+      TRUST_API_URL: http://trust-api:8000
+    volumes:
+      - a2a-bootstrap:/run/a2a-bootstrap:ro
+    ports:
+      - "8100:8100"
+    <<: *app-security
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/ready')"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  frontend:
+    build:
+      context: frontend
+    depends_on:
+      a1:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /var/cache/nginx:size=16m,uid=101,gid=101
+      - /var/run:size=4m,uid=101,gid=101
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+
+volumes:
+  a2a-postgres:
+  a2a-bootstrap:

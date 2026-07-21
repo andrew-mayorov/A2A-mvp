@@ -1,0 +1,190 @@
+{
+  "$defs": {
+    "QuoteDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "content_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "document_id": {
+          "format": "uuid",
+          "title": "Document Id",
+          "type": "string"
+        },
+        "document_type": {
+          "title": "Document Type",
+          "type": "string"
+        },
+        "media_type": {
+          "title": "Media Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document_type",
+        "content_hash",
+        "media_type"
+      ],
+      "title": "QuoteDocument",
+      "type": "object"
+    },
+    "QuoteLine": {
+      "additionalProperties": false,
+      "properties": {
+        "product_name": {
+          "title": "Product Name",
+          "type": "string"
+        },
+        "quantity": {
+          "exclusiveMinimum": 0,
+          "title": "Quantity",
+          "type": "integer"
+        },
+        "sku": {
+          "title": "Sku",
+          "type": "string"
+        },
+        "tax_amount": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+              "type": "string"
+            }
+          ],
+          "title": "Tax Amount"
+        },
+        "unit_price": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+              "type": "string"
+            }
+          ],
+          "title": "Unit Price"
+        }
+      },
+      "required": [
+        "sku",
+        "product_name",
+        "quantity",
+        "unit_price",
+        "tax_amount"
+      ],
+      "title": "QuoteLine",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "bank_requisites_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Bank Requisites Hash",
+      "type": "string"
+    },
+    "currency": {
+      "pattern": "^[A-Z]{3}$",
+      "title": "Currency",
+      "type": "string"
+    },
+    "delivery_days": {
+      "minimum": 0,
+      "title": "Delivery Days",
+      "type": "integer"
+    },
+    "delivery_fee": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+          "type": "string"
+        }
+      ],
+      "title": "Delivery Fee"
+    },
+    "documents": {
+      "items": {
+        "$ref": "#/$defs/QuoteDocument"
+      },
+      "title": "Documents",
+      "type": "array"
+    },
+    "lines": {
+      "items": {
+        "$ref": "#/$defs/QuoteLine"
+      },
+      "title": "Lines",
+      "type": "array"
+    },
+    "payment_delay_days": {
+      "minimum": 0,
+      "title": "Payment Delay Days",
+      "type": "integer"
+    },
+    "quote_id": {
+      "format": "uuid",
+      "title": "Quote Id",
+      "type": "string"
+    },
+    "rfq_id": {
+      "format": "uuid",
+      "title": "Rfq Id",
+      "type": "string"
+    },
+    "supplier_agent_id": {
+      "title": "Supplier Agent Id",
+      "type": "string"
+    },
+    "total_amount": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+          "type": "string"
+        }
+      ],
+      "title": "Total Amount"
+    },
+    "valid_until": {
+      "format": "date-time",
+      "title": "Valid Until",
+      "type": "string"
+    },
+    "warranty_months": {
+      "minimum": 0,
+      "title": "Warranty Months",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "rfq_id",
+    "supplier_agent_id",
+    "lines",
+    "delivery_fee",
+    "total_amount",
+    "currency",
+    "delivery_days",
+    "warranty_months",
+    "payment_delay_days",
+    "documents",
+    "bank_requisites_hash",
+    "valid_until"
+  ],
+  "title": "Quote",
+  "type": "object"
+}

@@ -1,0 +1,84 @@
+{
+  "$defs": {
+    "HumanDecisionType": {
+      "enum": [
+        "approve",
+        "reject",
+        "request_changes"
+      ],
+      "title": "HumanDecisionType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "approver_subject": {
+      "title": "Approver Subject",
+      "type": "string"
+    },
+    "authentication_context": {
+      "additionalProperties": true,
+      "title": "Authentication Context",
+      "type": "object"
+    },
+    "decided_at": {
+      "format": "date-time",
+      "title": "Decided At",
+      "type": "string"
+    },
+    "decision": {
+      "$ref": "#/$defs/HumanDecisionType"
+    },
+    "decision_id": {
+      "format": "uuid",
+      "title": "Decision Id",
+      "type": "string"
+    },
+    "organization_id": {
+      "title": "Organization Id",
+      "type": "string"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    },
+    "role": {
+      "title": "Role",
+      "type": "string"
+    },
+    "signature": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Signature"
+    },
+    "snapshot_hash": {
+      "title": "Snapshot Hash",
+      "type": "string"
+    }
+  },
+  "required": [
+    "decision",
+    "approver_subject",
+    "organization_id",
+    "role",
+    "authentication_context",
+    "snapshot_hash"
+  ],
+  "title": "HumanDecision",
+  "type": "object"
+}

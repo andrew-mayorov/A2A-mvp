@@ -1,0 +1,126 @@
+{
+  "$defs": {
+    "ToolRisk": {
+      "enum": [
+        "read_only",
+        "analysis",
+        "draft",
+        "commit",
+        "legal",
+        "financial",
+        "critical"
+      ],
+      "title": "ToolRisk",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "allowed_agent_roles": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Allowed Agent Roles",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "audit_policy": {
+      "title": "Audit Policy",
+      "type": "string"
+    },
+    "description": {
+      "title": "Description",
+      "type": "string"
+    },
+    "idempotency_strategy": {
+      "title": "Idempotency Strategy",
+      "type": "string"
+    },
+    "input_schema": {
+      "additionalProperties": true,
+      "title": "Input Schema",
+      "type": "object"
+    },
+    "oauth_scopes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Oauth Scopes",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "output_schema": {
+      "additionalProperties": true,
+      "title": "Output Schema",
+      "type": "object"
+    },
+    "owner": {
+      "title": "Owner",
+      "type": "string"
+    },
+    "policy_hook": {
+      "title": "Policy Hook",
+      "type": "string"
+    },
+    "required_mandate_actions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Required Mandate Actions",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "requires_human_approval": {
+      "title": "Requires Human Approval",
+      "type": "boolean"
+    },
+    "risk_level": {
+      "$ref": "#/$defs/ToolRisk"
+    },
+    "side_effect": {
+      "title": "Side Effect",
+      "type": "string"
+    },
+    "timeout_seconds": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0.0,
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+          "type": "string"
+        }
+      ],
+      "title": "Timeout Seconds"
+    },
+    "tool_id": {
+      "title": "Tool Id",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "tool_id",
+    "version",
+    "owner",
+    "description",
+    "input_schema",
+    "output_schema",
+    "risk_level",
+    "side_effect",
+    "oauth_scopes",
+    "allowed_agent_roles",
+    "required_mandate_actions",
+    "requires_human_approval",
+    "timeout_seconds",
+    "idempotency_strategy",
+    "policy_hook",
+    "audit_policy"
+  ],
+  "title": "ToolDefinition",
+  "type": "object"
+}

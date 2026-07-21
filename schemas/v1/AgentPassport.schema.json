@@ -1,0 +1,277 @@
+{
+  "$defs": {
+    "AgentAttestation": {
+      "additionalProperties": false,
+      "properties": {
+        "attestation_id": {
+          "format": "uuid",
+          "title": "Attestation Id",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "issued_at": {
+          "format": "date-time",
+          "title": "Issued At",
+          "type": "string"
+        },
+        "issuer": {
+          "title": "Issuer",
+          "type": "string"
+        },
+        "signature": {
+          "title": "Signature",
+          "type": "string"
+        },
+        "statement_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Statement Hash",
+          "type": "string"
+        },
+        "subject_agent_id": {
+          "title": "Subject Agent Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "issuer",
+        "subject_agent_id",
+        "statement_hash",
+        "issued_at",
+        "expires_at",
+        "signature"
+      ],
+      "title": "AgentAttestation",
+      "type": "object"
+    },
+    "AgentCardSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "captured_at": {
+          "format": "date-time",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "card": {
+          "additionalProperties": true,
+          "title": "Card",
+          "type": "object"
+        },
+        "card_hash": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Card Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "card_hash",
+        "card"
+      ],
+      "title": "AgentCardSnapshot",
+      "type": "object"
+    },
+    "AgentStatus": {
+      "enum": [
+        "pending",
+        "active",
+        "suspended",
+        "revoked",
+        "expired"
+      ],
+      "title": "AgentStatus",
+      "type": "string"
+    },
+    "PublicKeyReference": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "key_id": {
+          "title": "Key Id",
+          "type": "string"
+        },
+        "public_key": {
+          "title": "Public Key",
+          "type": "string"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        },
+        "valid_from": {
+          "format": "date-time",
+          "title": "Valid From",
+          "type": "string"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        }
+      },
+      "required": [
+        "key_id",
+        "algorithm",
+        "public_key",
+        "valid_from"
+      ],
+      "title": "PublicKeyReference",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "agent_card": {
+      "$ref": "#/$defs/AgentCardSnapshot"
+    },
+    "agent_id": {
+      "title": "Agent Id",
+      "type": "string"
+    },
+    "attestations": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/AgentAttestation"
+      },
+      "title": "Attestations",
+      "type": "array"
+    },
+    "capabilities": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Capabilities",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "endpoint": {
+      "title": "Endpoint",
+      "type": "string"
+    },
+    "keys": {
+      "items": {
+        "$ref": "#/$defs/PublicKeyReference"
+      },
+      "title": "Keys",
+      "type": "array"
+    },
+    "operator": {
+      "title": "Operator",
+      "type": "string"
+    },
+    "organization_id": {
+      "title": "Organization Id",
+      "type": "string"
+    },
+    "owner_legal_name": {
+      "title": "Owner Legal Name",
+      "type": "string"
+    },
+    "owner_tax_id": {
+      "title": "Owner Tax Id",
+      "type": "string"
+    },
+    "protocols": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Protocols",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "revocation_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Revocation Reason"
+    },
+    "risk_tier": {
+      "title": "Risk Tier",
+      "type": "string"
+    },
+    "role": {
+      "title": "Role",
+      "type": "string"
+    },
+    "schema_version": {
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "skills": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Skills",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "status": {
+      "$ref": "#/$defs/AgentStatus"
+    },
+    "tool_manifest_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Tool Manifest Hash",
+      "type": "string"
+    },
+    "valid_from": {
+      "format": "date-time",
+      "title": "Valid From",
+      "type": "string"
+    },
+    "valid_until": {
+      "format": "date-time",
+      "title": "Valid Until",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "agent_id",
+    "organization_id",
+    "owner_legal_name",
+    "owner_tax_id",
+    "operator",
+    "role",
+    "endpoint",
+    "capabilities",
+    "skills",
+    "protocols",
+    "tool_manifest_hash",
+    "agent_card",
+    "keys",
+    "risk_tier",
+    "status",
+    "valid_from",
+    "valid_until"
+  ],
+  "title": "AgentPassport",
+  "type": "object"
+}

@@ -1,0 +1,94 @@
+{
+  "$defs": {
+    "Decision": {
+      "enum": [
+        "ALLOW",
+        "REQUIRE_APPROVAL",
+        "ESCALATE",
+        "DENY",
+        "FREEZE"
+      ],
+      "title": "Decision",
+      "type": "string"
+    },
+    "FraudDecision": {
+      "additionalProperties": false,
+      "properties": {
+        "decided_at": {
+          "format": "date-time",
+          "title": "Decided At",
+          "type": "string"
+        },
+        "decision": {
+          "$ref": "#/$defs/Decision"
+        },
+        "policy_version": {
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "reasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "rule_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Rule Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "decision",
+        "policy_version",
+        "rule_ids",
+        "reasons"
+      ],
+      "title": "FraudDecision",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "checks": {
+      "additionalProperties": {
+        "type": "boolean"
+      },
+      "title": "Checks",
+      "type": "object"
+    },
+    "fraud_decision": {
+      "$ref": "#/$defs/FraudDecision"
+    },
+    "purchase_intent_id": {
+      "format": "uuid",
+      "title": "Purchase Intent Id",
+      "type": "string"
+    },
+    "verification_id": {
+      "format": "uuid",
+      "title": "Verification Id",
+      "type": "string"
+    },
+    "verified": {
+      "title": "Verified",
+      "type": "boolean"
+    },
+    "verified_at": {
+      "format": "date-time",
+      "title": "Verified At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "purchase_intent_id",
+    "verified",
+    "checks",
+    "fraud_decision"
+  ],
+  "title": "OracleVerification",
+  "type": "object"
+}

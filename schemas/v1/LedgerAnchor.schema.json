@@ -1,0 +1,46 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "anchor_id": {
+      "format": "uuid",
+      "title": "Anchor Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "current_hash": {
+      "title": "Current Hash",
+      "type": "string"
+    },
+    "deal_id": {
+      "format": "uuid",
+      "title": "Deal Id",
+      "type": "string"
+    },
+    "payload_hash": {
+      "title": "Payload Hash",
+      "type": "string"
+    },
+    "previous_hash": {
+      "title": "Previous Hash",
+      "type": "string"
+    },
+    "sequence_number": {
+      "exclusiveMinimum": 0,
+      "title": "Sequence Number",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "deal_id",
+    "sequence_number",
+    "previous_hash",
+    "current_hash",
+    "payload_hash"
+  ],
+  "title": "LedgerAnchor",
+  "type": "object"
+}

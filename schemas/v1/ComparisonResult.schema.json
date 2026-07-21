@@ -1,0 +1,60 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "explanation": {
+      "title": "Explanation",
+      "type": "string"
+    },
+    "quote_ids": {
+      "items": {
+        "format": "uuid",
+        "type": "string"
+      },
+      "title": "Quote Ids",
+      "type": "array"
+    },
+    "ranking_version": {
+      "title": "Ranking Version",
+      "type": "string"
+    },
+    "recommended_quote_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Recommended Quote Id"
+    },
+    "scores": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "type": "string"
+          }
+        ]
+      },
+      "propertyNames": {
+        "format": "uuid"
+      },
+      "title": "Scores",
+      "type": "object"
+    }
+  },
+  "required": [
+    "ranking_version",
+    "quote_ids",
+    "scores",
+    "recommended_quote_id",
+    "explanation"
+  ],
+  "title": "ComparisonResult",
+  "type": "object"
+}

@@ -1,0 +1,99 @@
+{
+  "$defs": {
+    "Need": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "title": "Category",
+          "type": "string"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "delivery_by": {
+          "format": "date",
+          "title": "Delivery By",
+          "type": "string"
+        },
+        "delivery_city": {
+          "title": "Delivery City",
+          "type": "string"
+        },
+        "maximum_amount": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+              "type": "string"
+            }
+          ],
+          "title": "Maximum Amount"
+        },
+        "need_id": {
+          "format": "uuid",
+          "title": "Need Id",
+          "type": "string"
+        },
+        "organization_id": {
+          "title": "Organization Id",
+          "type": "string"
+        },
+        "product_name": {
+          "title": "Product Name",
+          "type": "string"
+        },
+        "quantity": {
+          "exclusiveMinimum": 0,
+          "title": "Quantity",
+          "type": "integer"
+        },
+        "sku": {
+          "title": "Sku",
+          "type": "string"
+        }
+      },
+      "required": [
+        "organization_id",
+        "sku",
+        "product_name",
+        "category",
+        "quantity",
+        "delivery_city",
+        "delivery_by",
+        "maximum_amount",
+        "currency"
+      ],
+      "title": "Need",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "need": {
+      "$ref": "#/$defs/Need"
+    },
+    "requested_documents": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Requested Documents",
+      "type": "array"
+    },
+    "rfq_id": {
+      "format": "uuid",
+      "title": "Rfq Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "need",
+    "requested_documents"
+  ],
+  "title": "RFQ",
+  "type": "object"
+}

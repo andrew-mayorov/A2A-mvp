@@ -1,0 +1,41 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "current_hash": {
+      "title": "Current Hash",
+      "type": "string"
+    },
+    "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+    },
+    "payload_hash": {
+      "title": "Payload Hash",
+      "type": "string"
+    },
+    "previous_hash": {
+      "title": "Previous Hash",
+      "type": "string"
+    },
+    "record_type": {
+      "title": "Record Type",
+      "type": "string"
+    },
+    "sequence_number": {
+      "exclusiveMinimum": 0,
+      "title": "Sequence Number",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "sequence_number",
+    "record_type",
+    "payload_hash",
+    "previous_hash",
+    "current_hash",
+    "occurred_at"
+  ],
+  "title": "EvidenceRecord",
+  "type": "object"
+}

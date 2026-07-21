@@ -1,0 +1,36 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "approval_request_id": {
+      "format": "uuid",
+      "title": "Approval Request Id",
+      "type": "string"
+    },
+    "deal_id": {
+      "format": "uuid",
+      "title": "Deal Id",
+      "type": "string"
+    },
+    "requested_at": {
+      "format": "date-time",
+      "title": "Requested At",
+      "type": "string"
+    },
+    "requested_role": {
+      "title": "Requested Role",
+      "type": "string"
+    },
+    "snapshot_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Snapshot Hash",
+      "type": "string"
+    }
+  },
+  "required": [
+    "deal_id",
+    "snapshot_hash",
+    "requested_role"
+  ],
+  "title": "ApprovalRequest",
+  "type": "object"
+}

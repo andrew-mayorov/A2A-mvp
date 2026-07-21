@@ -1,0 +1,53 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "product_name": {
+      "title": "Product Name",
+      "type": "string"
+    },
+    "quantity": {
+      "exclusiveMinimum": 0,
+      "title": "Quantity",
+      "type": "integer"
+    },
+    "sku": {
+      "title": "Sku",
+      "type": "string"
+    },
+    "tax_amount": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+          "type": "string"
+        }
+      ],
+      "title": "Tax Amount"
+    },
+    "unit_price": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+          "type": "string"
+        }
+      ],
+      "title": "Unit Price"
+    }
+  },
+  "required": [
+    "sku",
+    "product_name",
+    "quantity",
+    "unit_price",
+    "tax_amount"
+  ],
+  "title": "QuoteLine",
+  "type": "object"
+}

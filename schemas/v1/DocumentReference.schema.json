@@ -1,0 +1,40 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "content_hash": {
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "deal_id": {
+      "format": "uuid",
+      "title": "Deal Id",
+      "type": "string"
+    },
+    "document_id": {
+      "format": "uuid",
+      "title": "Document Id",
+      "type": "string"
+    },
+    "document_type": {
+      "title": "Document Type",
+      "type": "string"
+    },
+    "storage_reference": {
+      "title": "Storage Reference",
+      "type": "string"
+    }
+  },
+  "required": [
+    "deal_id",
+    "document_type",
+    "content_hash",
+    "storage_reference"
+  ],
+  "title": "DocumentReference",
+  "type": "object"
+}

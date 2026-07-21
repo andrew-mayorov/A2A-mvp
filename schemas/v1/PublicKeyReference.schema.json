@@ -1,0 +1,56 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "algorithm": {
+      "title": "Algorithm",
+      "type": "string"
+    },
+    "key_id": {
+      "title": "Key Id",
+      "type": "string"
+    },
+    "public_key": {
+      "title": "Public Key",
+      "type": "string"
+    },
+    "revoked_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Revoked At"
+    },
+    "valid_from": {
+      "format": "date-time",
+      "title": "Valid From",
+      "type": "string"
+    },
+    "valid_until": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Valid Until"
+    }
+  },
+  "required": [
+    "key_id",
+    "algorithm",
+    "public_key",
+    "valid_from"
+  ],
+  "title": "PublicKeyReference",
+  "type": "object"
+}

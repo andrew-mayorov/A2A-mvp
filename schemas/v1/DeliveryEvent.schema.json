@@ -1,0 +1,40 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "actor_agent_id": {
+      "title": "Actor Agent Id",
+      "type": "string"
+    },
+    "deal_id": {
+      "format": "uuid",
+      "title": "Deal Id",
+      "type": "string"
+    },
+    "event_id": {
+      "format": "uuid",
+      "title": "Event Id",
+      "type": "string"
+    },
+    "evidence_hash": {
+      "title": "Evidence Hash",
+      "type": "string"
+    },
+    "occurred_at": {
+      "format": "date-time",
+      "title": "Occurred At",
+      "type": "string"
+    },
+    "status": {
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "deal_id",
+    "status",
+    "actor_agent_id",
+    "evidence_hash"
+  ],
+  "title": "DeliveryEvent",
+  "type": "object"
+}

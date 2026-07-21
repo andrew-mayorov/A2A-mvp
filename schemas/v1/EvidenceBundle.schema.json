@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "EvidenceRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "current_hash": {
+          "title": "Current Hash",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "payload_hash": {
+          "title": "Payload Hash",
+          "type": "string"
+        },
+        "previous_hash": {
+          "title": "Previous Hash",
+          "type": "string"
+        },
+        "record_type": {
+          "title": "Record Type",
+          "type": "string"
+        },
+        "sequence_number": {
+          "exclusiveMinimum": 0,
+          "title": "Sequence Number",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sequence_number",
+        "record_type",
+        "payload_hash",
+        "previous_hash",
+        "current_hash",
+        "occurred_at"
+      ],
+      "title": "EvidenceRecord",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "deal_id": {
+      "format": "uuid",
+      "title": "Deal Id",
+      "type": "string"
+    },
+    "exported_at": {
+      "format": "date-time",
+      "title": "Exported At",
+      "type": "string"
+    },
+    "integrity_valid": {
+      "title": "Integrity Valid",
+      "type": "boolean"
+    },
+    "organization_id": {
+      "title": "Organization Id",
+      "type": "string"
+    },
+    "records": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRecord"
+      },
+      "title": "Records",
+      "type": "array"
+    },
+    "schema_version": {
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "deal_id",
+    "organization_id",
+    "records",
+    "integrity_valid"
+  ],
+  "title": "EvidenceBundle",
+  "type": "object"
+}

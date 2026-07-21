@@ -1,0 +1,70 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "amount": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+          "type": "string"
+        }
+      ],
+      "title": "Amount"
+    },
+    "approved_snapshot_hash": {
+      "title": "Approved Snapshot Hash",
+      "type": "string"
+    },
+    "buyer_agent_id": {
+      "title": "Buyer Agent Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "currency": {
+      "title": "Currency",
+      "type": "string"
+    },
+    "deal_id": {
+      "format": "uuid",
+      "title": "Deal Id",
+      "type": "string"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "intent_id": {
+      "format": "uuid",
+      "title": "Intent Id",
+      "type": "string"
+    },
+    "recipient_binding_hash": {
+      "title": "Recipient Binding Hash",
+      "type": "string"
+    },
+    "supplier_agent_id": {
+      "title": "Supplier Agent Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "deal_id",
+    "approved_snapshot_hash",
+    "buyer_agent_id",
+    "supplier_agent_id",
+    "amount",
+    "currency",
+    "recipient_binding_hash",
+    "expires_at"
+  ],
+  "title": "PurchaseIntent",
+  "type": "object"
+}

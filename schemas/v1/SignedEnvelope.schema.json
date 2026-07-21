@@ -1,0 +1,127 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "audience": {
+      "title": "Audience",
+      "type": "string"
+    },
+    "causation_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Causation Id"
+    },
+    "correlation_id": {
+      "format": "uuid",
+      "title": "Correlation Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "deal_id": {
+      "format": "uuid",
+      "title": "Deal Id",
+      "type": "string"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "idempotency_key": {
+      "maxLength": 256,
+      "minLength": 8,
+      "title": "Idempotency Key",
+      "type": "string"
+    },
+    "key_id": {
+      "title": "Key Id",
+      "type": "string"
+    },
+    "mandate_id": {
+      "format": "uuid",
+      "title": "Mandate Id",
+      "type": "string"
+    },
+    "message_id": {
+      "format": "uuid",
+      "title": "Message Id",
+      "type": "string"
+    },
+    "nonce": {
+      "maxLength": 256,
+      "minLength": 16,
+      "title": "Nonce",
+      "type": "string"
+    },
+    "operation": {
+      "title": "Operation",
+      "type": "string"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "title": "Payload",
+      "type": "object"
+    },
+    "payload_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Payload Hash",
+      "type": "string"
+    },
+    "purpose": {
+      "title": "Purpose",
+      "type": "string"
+    },
+    "recipient_agent_id": {
+      "title": "Recipient Agent Id",
+      "type": "string"
+    },
+    "schema_name": {
+      "title": "Schema Name",
+      "type": "string"
+    },
+    "schema_version": {
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sender_agent_id": {
+      "title": "Sender Agent Id",
+      "type": "string"
+    },
+    "signature": {
+      "title": "Signature",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_name",
+    "schema_version",
+    "correlation_id",
+    "deal_id",
+    "sender_agent_id",
+    "recipient_agent_id",
+    "mandate_id",
+    "key_id",
+    "operation",
+    "purpose",
+    "audience",
+    "expires_at",
+    "nonce",
+    "idempotency_key",
+    "payload_hash",
+    "payload",
+    "signature"
+  ],
+  "title": "SignedEnvelope",
+  "type": "object"
+}

@@ -1,0 +1,47 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "attestation_id": {
+      "format": "uuid",
+      "title": "Attestation Id",
+      "type": "string"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "issued_at": {
+      "format": "date-time",
+      "title": "Issued At",
+      "type": "string"
+    },
+    "issuer": {
+      "title": "Issuer",
+      "type": "string"
+    },
+    "signature": {
+      "title": "Signature",
+      "type": "string"
+    },
+    "statement_hash": {
+      "pattern": "^[a-f0-9]{64}$",
+      "title": "Statement Hash",
+      "type": "string"
+    },
+    "subject_agent_id": {
+      "title": "Subject Agent Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "issuer",
+    "subject_agent_id",
+    "statement_hash",
+    "issued_at",
+    "expires_at",
+    "signature"
+  ],
+  "title": "AgentAttestation",
+  "type": "object"
+}

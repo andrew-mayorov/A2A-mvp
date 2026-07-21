@@ -1,0 +1,40 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "accepted": {
+      "title": "Accepted",
+      "type": "boolean"
+    },
+    "commitment_hash": {
+      "title": "Commitment Hash",
+      "type": "string"
+    },
+    "commitment_id": {
+      "format": "uuid",
+      "title": "Commitment Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "purchase_intent_id": {
+      "format": "uuid",
+      "title": "Purchase Intent Id",
+      "type": "string"
+    },
+    "supplier_agent_id": {
+      "title": "Supplier Agent Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "purchase_intent_id",
+    "supplier_agent_id",
+    "accepted",
+    "commitment_hash"
+  ],
+  "title": "SupplierCommitment",
+  "type": "object"
+}

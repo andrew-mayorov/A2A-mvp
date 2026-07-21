@@ -1,0 +1,55 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "amount": {
+      "anyOf": [
+        {
+          "minimum": 0.0,
+          "type": "number"
+        },
+        {
+          "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d{0,2}0*$",
+          "type": "string"
+        }
+      ],
+      "title": "Amount"
+    },
+    "currency": {
+      "title": "Currency",
+      "type": "string"
+    },
+    "idempotency_key": {
+      "title": "Idempotency Key",
+      "type": "string"
+    },
+    "oracle_verification_id": {
+      "format": "uuid",
+      "title": "Oracle Verification Id",
+      "type": "string"
+    },
+    "purchase_intent_id": {
+      "format": "uuid",
+      "title": "Purchase Intent Id",
+      "type": "string"
+    },
+    "recipient_binding_hash": {
+      "title": "Recipient Binding Hash",
+      "type": "string"
+    },
+    "request_id": {
+      "format": "uuid",
+      "title": "Request Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "purchase_intent_id",
+    "oracle_verification_id",
+    "recipient_binding_hash",
+    "amount",
+    "currency",
+    "idempotency_key"
+  ],
+  "title": "PaymentDraftRequest",
+  "type": "object"
+}

@@ -1,0 +1,88 @@
+[profile]
+name = "local-demo"
+production_like = false
+default_currency = "RUB"
+default_category = "mro.standardized"
+minimum_quotes = 2
+buyer_agent_id = "agent:demo:buyer"
+buyer_organization_id = "org:demo:buyer"
+approver_subject = "demo.approver"
+delivery_city = "Москва"
+delivery_days = 10
+mandate_validity_hours = 24
+default_sku = "BEARING-6205-2RS"
+default_product_name = "Подшипник 6205-2RS"
+default_quantity = 20
+default_maximum_amount = "25000.00"
+mandate_version = "demo-policy-v1"
+mandate_signature = "issued-by-demo-mandate-service"
+mandate_issuer = "trusted-infrastructure:mandate-service"
+allowed_actions = ["send_rfq", "sign_quote", "final_offer_acceptance", "create_purchase_intent", "anchor_intent", "oracle_process", "create_payment_draft", "edo_action"]
+forbidden_actions = ["execute_payment", "sign_contract_autonomously"]
+approval_role = "approver"
+
+[ranking]
+price = "0.40"
+delivery = "0.25"
+warranty = "0.15"
+risk = "0.10"
+payment_terms = "0.10"
+version = "deterministic-v1"
+
+[network]
+allowed_schemes = ["http"]
+allowed_ports = [8000, 8100, 8201, 8202, 8203, 8080, 8081]
+allow_private_networks = true
+max_response_bytes = 1048576
+connect_timeout_seconds = 3.0
+read_timeout_seconds = 8.0
+max_attempts = 2
+
+[security]
+signature_algorithm = "Ed25519"
+key_provider = "filesystem"
+keys_directory = "/run/a2a-bootstrap"
+nonce_ttl_seconds = 300
+financial_kill_switch = false
+
+[oidc]
+issuer = "http://oidc:8080/default"
+audience = "a2a-demo"
+required_approval_role = "approver"
+required_admin_role = "administrator"
+
+[[suppliers]]
+agent_id = "agent:demo:supplier-a"
+organization_id = "org:demo:supplier-a"
+name = "ПромКомплект"
+endpoint = "http://a2-1:8201"
+bank_binding_hash = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+catalog_file = "config/suppliers/supplier-a.json"
+risk = "0.08"
+risk_tier = "low"
+status = "active"
+categories = ["mro.standardized"]
+
+[[suppliers]]
+agent_id = "agent:demo:supplier-b"
+organization_id = "org:demo:supplier-b"
+name = "Индустрия-Снаб"
+endpoint = "http://a2-2:8202"
+bank_binding_hash = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+catalog_file = "config/suppliers/supplier-b.json"
+risk = "0.15"
+risk_tier = "medium"
+status = "active"
+categories = ["mro.standardized"]
+
+[[suppliers]]
+agent_id = "agent:demo:supplier-c"
+organization_id = "org:demo:supplier-c"
+name = "ТехРесурс"
+endpoint = "http://a2-3:8203"
+bank_binding_hash = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+catalog_file = "config/suppliers/supplier-c.json"
+risk = "0.04"
+risk_tier = "low"
+status = "active"
+categories = ["mro.standardized"]

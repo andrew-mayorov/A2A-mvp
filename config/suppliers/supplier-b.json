@@ -1,0 +1,17 @@
+{
+  "name": "Индустрия-Снаб",
+  "currency": "RUB",
+  "vat_rate": "0.20",
+  "categories": ["mro.standardized"],
+  "items": [
+    {
+      "sku": "BEARING-6205-2RS",
+      "name": "Подшипник 6205-2RS",
+      "unit_price": "790.00",
+      "delivery_fee": "2500.00",
+      "delivery_days": 8,
+      "warranty_months": 12,
+      "payment_delay_days": 30
+    }
+  ]
+}

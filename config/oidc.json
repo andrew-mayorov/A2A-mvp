@@ -1,0 +1,21 @@
+{
+  "interactiveLogin": true,
+  "httpServer": "NettyWrapper",
+  "tokenCallbacks": [
+    {
+      "issuerId": "default",
+      "requestMappings": [
+        {
+          "requestParam": "scope",
+          "match": ".*",
+          "claims": {
+            "aud": ["a2a-demo"],
+            "tenant": "org:demo:buyer",
+            "roles": ["buyer", "approver", "auditor"],
+            "scope": ["deals:read", "deals:write", "approvals:write", "evidence:read"]
+          }
+        }
+      ]
+    }
+  ]
+}
